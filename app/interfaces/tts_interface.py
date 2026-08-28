@@ -5,7 +5,7 @@ class BaseTTS(ABC):
     """Abstract Interface for Text-To-Speech (TTS) Synthesis."""
 
     @abstractmethod
-    async def synthesize_stream(
+    def synthesize_stream(
         self, 
         text_stream: AsyncGenerator[str, None], 
         voice: Optional[str] = None
