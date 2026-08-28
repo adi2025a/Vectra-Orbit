@@ -16,7 +16,7 @@ class ProviderFactory:
     """Central Factory for initializing configured VAD, STT, LLM, TTS, and Telephony modules."""
 
     @staticmethod
-    def get_vad(provider_name: str = None) -> BaseVAD:
+    def get_vad(provider_name: str | None = None) -> BaseVAD:
         name = (provider_name or settings.VAD_PROVIDER).lower()
         if name == "silero":
             return SileroVAD()
@@ -25,7 +25,7 @@ class ProviderFactory:
         return EnergyVAD()
 
     @staticmethod
-    def get_stt(provider_name: str = None) -> BaseSTT:
+    def get_stt(provider_name: str | None = None) -> BaseSTT:
         name = (provider_name or settings.STT_PROVIDER).lower()
         if name == "groq":
             return GroqSTT()
@@ -34,7 +34,7 @@ class ProviderFactory:
         return GroqSTT()
 
     @staticmethod
-    def get_llm(provider_name: str = None) -> BaseLLM:
+    def get_llm(provider_name: str | None = None) -> BaseLLM:
         name = (provider_name or settings.LLM_PROVIDER).lower()
         if name == "groq":
             return GroqLLM()
@@ -45,7 +45,7 @@ class ProviderFactory:
         return GroqLLM()
 
     @staticmethod
-    def get_tts(provider_name: str = None) -> BaseTTS:
+    def get_tts(provider_name: str | None = None) -> BaseTTS:
         name = (provider_name or settings.TTS_PROVIDER).lower()
         if name == "edge":
             return EdgeTTSProvider()
@@ -54,7 +54,7 @@ class ProviderFactory:
         return EdgeTTSProvider()
 
     @staticmethod
-    def get_telephony(websocket: WebSocket, provider_name: str = None) -> BaseTelephonyAdapter:
+    def get_telephony(websocket: WebSocket, provider_name: str | None = None) -> BaseTelephonyAdapter:
         name = (provider_name or settings.TELEPHONY_PROVIDER).lower()
         if name == "twilio":
             return TwilioTelephonyAdapter(websocket)

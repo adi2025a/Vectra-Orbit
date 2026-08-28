@@ -61,4 +61,5 @@ async def websocket_call_endpoint(websocket: WebSocket):
         finally:
             await session.close()
             # Trigger background post-call analytics worker
-            asyncio.create_task(CallAnalyticsEngine.analyze_call(db_session, session.db_call_id))
+            if session.db_call_id:
+                asyncio.create_task(CallAnalyticsEngine.analyze_call(db_session, session.db_call_id))
