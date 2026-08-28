@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Vectra-Orbit | AI Voice Calling Platform</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="logo">
+        <div class="logo-icon">🎙️</div>
+        <div class="logo-text">
+          <h1>Vectra-Orbit</h1>
+        </div>
+      </div>
+      <div class="badge">FastAPI + WebSockets + Modular Cascaded Pipeline</div>
+    </header>
+
+    <div class="grid-layout">
+      <!-- Call Control Console -->
+      <div class="card">
+        <div class="card-title">
+          <span>Live Call Console</span>
+          <div class="call-status">
+            <div class="status-dot" id="statusDot"></div>
+            <span id="statusText">Disconnected</span>
+          </div>
+        </div>
+
+        <div class="visualizer-container">
+          <canvas id="waveformCanvas"></canvas>
+        </div>
+
+        <div class="controls">
+          <button id="startCallBtn" class="btn btn-start">
+            <span>📞</span> Start AI Call
+          </button>
+          <button id="stopCallBtn" class="btn btn-stop" disabled>
+            <span>🛑</span> End Call
+          </button>
+        </div>
+
+        <div id="transferAlert" class="transfer-alert">
+          <strong>🔀 CALL FORWARDING ACTIVATED</strong>
+          <div id="transferMsg">Transferring call to human agent...</div>
+        </div>
+      </div>
+
+      <!-- Real-time Latency Metrics Dashboard -->
+      <div class="card">
+        <div class="card-title">
+          <span>Module Latency Analytics</span>
+          <span style="font-size: 0.8rem; color: var(--text-muted);">Real-time Turn Benchmarks</span>
+        </div>
+
+        <div class="latency-grid">
+          <div class="metric-card" id="cardVad">
+            <div class="metric-label">VAD Processing</div>
+            <div class="metric-value" id="valVad">-- ms</div>
+          </div>
+          <div class="metric-card" id="cardStt">
+            <div class="metric-label">STT Latency</div>
+            <div class="metric-value" id="valStt">-- ms</div>
+          </div>
+          <div class="metric-card" id="cardLlm">
+            <div class="metric-label">LLM (TTFT)</div>
+            <div class="metric-value" id="valLlm">-- ms</div>
+          </div>
+          <div class="metric-card" id="cardTts">
+            <div class="metric-label">TTS 1st Chunk</div>
+            <div class="metric-value" id="valTts">-- ms</div>
+          </div>
+          <div class="metric-card" id="cardE2e">
+            <div class="metric-label">E2E Voice Roundtrip</div>
+            <div class="metric-value" id="valE2e">-- ms</div>
+          </div>
+          <div class="metric-card" id="cardBottleneck">
+            <div class="metric-label">Max Bottleneck</div>
+            <div class="metric-value" id="valBottleneck">None</div>
+          </div>
+        </div>
+
+        <div class="bottleneck-banner" id="bottleneckBanner">
+          <span>⚡</span>
+          <span id="bottleneckText">Start a call and speak into your microphone to view live module latency analysis.</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Live Transcript & Conversation Log -->
+    <div class="card" style="margin-bottom: 2rem;">
+      <div class="card-title">Live Call Transcript</div>
+      <div class="transcript-box" id="transcriptBox">
+        <div class="transcript-message message-ai">
+          <div class="message-sender">System</div>
+          Press <strong>Start AI Call</strong> to open the full-duplex WebSocket stream and test speech, barge-in, and call forwarding.
+        </div>
+      </div>
+    </div>
+
+    <!-- Recent Call Logs & Database Records -->
+    <div class="card">
+      <div class="card-title">Recent Call Database Logs & Metrics</div>
+      <table class="calls-table">
+        <thead>
+          <tr>
+            <th>Call ID</th>
+            <th>Status</th>
+            <th>Duration</th>
+            <th>Avg STT</th>
+            <th>Avg LLM TTFT</th>
+            <th>Avg E2E Voice</th>
+            <th>Transferred?</th>
+          </tr>
+        </thead>
+        <tbody id="callsTableBody">
+          <tr>
+            <td colspan="7" style="text-align: center; color: var(--text-muted);">No recorded calls yet.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>
