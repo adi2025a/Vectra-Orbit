@@ -31,9 +31,7 @@ class CallAnalyticsEngine:
 
         llm = ProviderFactory.get_llm("groq")
         raw_response = ""
-        async for chunk in llm.generate_response_stream(
-            messages=[{"role": "user", "content": analysis_prompt}]
-        ):
+        async for chunk in llm.generate_response_stream(messages=[{"role": "user", "content": analysis_prompt}]):
             if chunk.content:
                 raw_response += chunk.content
 

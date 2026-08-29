@@ -85,9 +85,11 @@ class CallRepository:
         result = await session.execute(select(Call).where(Call.id == call_id))
         call = result.scalar_one_or_none()
         if call:
-            call.end_time = datetime.now(timezone.utc)
+            end_dt = datetime.now(timezone.utc)
+            call.end_time = end_dt
             if call.start_time:
-                call.duration_seconds = (call.end_time - call.start_time.replace(tzinfo=timezone.utc)).total_seconds()
+                start_dt = call.start_time.replace(tzinfo=timezone.utc) if call.start_time.tzinfo is None else call.start_time
+                call.duration_seconds = (end_dt - start_dt).total_seconds()
             call.status = status
             call.was_transferred = was_transferred
             call.transfer_target = transfer_target

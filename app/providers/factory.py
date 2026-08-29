@@ -8,6 +8,7 @@ from app.interfaces.telephony_interface import BaseTelephonyAdapter
 from app.providers.vad.silero_vad import SileroVAD, EnergyVAD
 from app.providers.stt.groq_stt import GroqSTT, MockSTT
 from app.providers.llm.groq_llm import GroqLLM, OllamaLLM, MockLLM
+from app.providers.llm.gemini_llm import GeminiLLM
 from app.providers.tts.edge_tts_provider import EdgeTTSProvider, MockTTSProvider
 from app.providers.telephony.web_telephony import WebTelephonyAdapter, TwilioTelephonyAdapter
 from fastapi import WebSocket
@@ -38,6 +39,8 @@ class ProviderFactory:
         name = (provider_name or settings.LLM_PROVIDER).lower()
         if name == "groq":
             return GroqLLM()
+        elif name == "gemini":
+            return GeminiLLM()
         elif name == "ollama":
             return OllamaLLM()
         elif name == "mock":

@@ -120,16 +120,28 @@ function updateMetrics(m) {
     `Turn #${m.turn_id} Benchmark: E2E Latency ${m.e2e_voice_latency_ms.toFixed(1)}ms. Highest Latency Component: ${m.max_latency_module}`;
 }
 
+let nextPlayTime = 0;
+
 async function playAudioBuffer(arrayBuffer) {
   if (!audioContext) return;
   try {
-    const decoded = await audioContext.decodeAudioData(arrayBuffer);
+    if (audioContext.state === "suspended") {
+      await audioContext.resume();
+    }
+    const bufferCopy = arrayBuffer.slice(0);
+    const decoded = await audioContext.decodeAudioData(bufferCopy);
     const source = audioContext.createBufferSource();
     source.buffer = decoded;
     source.connect(audioContext.destination);
-    source.start(0);
+    
+    const now = audioContext.currentTime;
+    if (nextPlayTime < now) {
+      nextPlayTime = now;
+    }
+    source.start(nextPlayTime);
+    nextPlayTime += decoded.duration;
   } catch (err) {
-    // Binary raw chunk streaming fallback
+    console.error("[WebAudio Error] Could not decode audio chunk:", err);
   }
 }
 

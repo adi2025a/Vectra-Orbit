@@ -37,6 +37,16 @@ class WebTelephonyAdapter(BaseTelephonyAdapter):
         if audio_bytes and self.websocket:
             await self.websocket.send_bytes(audio_bytes)
 
+    async def send_control_event(self, event_dict: Dict[str, Any]) -> None:
+        """
+        Sends JSON control/transcript event to Web browser client.
+        """
+        if self.websocket:
+            try:
+                await self.websocket.send_text(json.dumps(event_dict))
+            except Exception:
+                pass
+
     async def transfer_call(self, session_id: str, target_phone_number: str) -> bool:
         """
         Notify the browser UI that call forwarding / transfer to human support was triggered.

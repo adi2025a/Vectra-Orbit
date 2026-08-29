@@ -4,6 +4,7 @@ import time
 from typing import List, Dict, Any, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import settings
 from app.interfaces.vad_interface import BaseVAD
 from app.interfaces.stt_interface import BaseSTT
 from app.interfaces.llm_interface import BaseLLM, LLMChunk, FunctionCall
@@ -83,11 +84,12 @@ class CallSession:
             self.silence_chunks = 0
             self.audio_buffer.extend(pcm_bytes)
 
-            if not self.is_user_speaking and self.speech_chunks >= 3:
+            if not self.is_user_speaking and self.speech_chunks >= settings.VAD_BARGEIN_SPEECH_CHUNKS:
                 # User started speaking!
                 self.is_user_speaking = True
                 # Trigger Barge-in Interruption if AI is currently synthesizing or talking
-                await self.interrupt_ai_speech()
+                if settings.ENABLE_BARGEIN:
+                    await self.interrupt_ai_speech()
 
         else:
             self.silence_chunks += 1
@@ -95,7 +97,7 @@ class CallSession:
                 self.audio_buffer.extend(pcm_bytes)
 
             # Silence threshold reached after speech -> User finished speaking turn
-            if self.is_user_speaking and self.silence_chunks >= 12:  # ~240ms silence
+            if self.is_user_speaking and self.silence_chunks >= settings.VAD_SILENCE_CHUNKS:
                 self.is_user_speaking = False
                 self.speech_chunks = 0
                 self.silence_chunks = 0
@@ -137,6 +139,7 @@ class CallSession:
                 return
 
             print(f"[Session {self.session_id}] User (STT {turn.stt_latency_ms:.1f}ms): {user_transcript}")
+            await self.telephony.send_control_event({"event": "transcript", "role": "user", "text": user_transcript})
 
             # Append user message & DB turn
             self.messages.append({"role": "user", "content": user_transcript})
@@ -171,7 +174,9 @@ class CallSession:
 
                 turn.llm_total_latency_ms = tracker.stop("llm_total")
                 if llm_response_text:
+                    print(f"[Session {self.session_id}] AI (LLM {turn.llm_ttft_ms:.1f}ms): {llm_response_text}")
                     self.messages.append({"role": "assistant", "content": llm_response_text})
+                    await self.telephony.send_control_event({"event": "transcript", "role": "assistant", "text": llm_response_text})
                     if self.db and self.db_call_id:
                         await CallRepository.add_transcript_turn(
                             self.db, self.db_call_id, self.turn_counter, "assistant", llm_response_text
@@ -205,6 +210,8 @@ class CallSession:
                 f"TTS 1st={turn.tts_first_chunk_ms:.1f}ms | E2E={turn.e2e_voice_latency_ms:.1f}ms | "
                 f"🔥 BOTTLENECK: {turn.max_latency_module}"
             )
+
+            await self.telephony.send_control_event({"event": "metrics", "data": turn.model_dump()})
 
             # Save metrics to DB
             if self.db and self.db_call_id:

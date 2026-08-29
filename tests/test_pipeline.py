@@ -26,10 +26,12 @@ def test_turn_metric_bottleneck():
 def test_provider_factory_mock():
     stt = ProviderFactory.get_stt("mock")
     llm = ProviderFactory.get_llm("mock")
+    gemini = ProviderFactory.get_llm("gemini")
     tts = ProviderFactory.get_tts("mock")
     vad = ProviderFactory.get_vad("energy")
 
     assert stt is not None
     assert llm is not None
+    assert gemini is not None
     assert tts is not None
     assert vad is not None

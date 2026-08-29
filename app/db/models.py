@@ -17,7 +17,7 @@ class Campaign(Base):
     system_prompt: Mapped[str] = mapped_column(Text, nullable=False)
     transfer_phone_number: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
     voice_name: Mapped[str] = mapped_column(String(100), default="en-US-AvaNeural")
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
     calls: Mapped[List["Call"]] = relationship("Call", back_populates="campaign")
 
@@ -30,8 +30,8 @@ class Call(Base):
     telephony_provider: Mapped[str] = mapped_column(String(50), default="web")
     customer_phone: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
     status: Mapped[str] = mapped_column(String(50), default="initiated")  # initiated, active, transferred, completed, failed
-    start_time: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
-    end_time: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    start_time: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    end_time: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     duration_seconds: Mapped[float] = mapped_column(Float, default=0.0)
     was_transferred: Mapped[bool] = mapped_column(Boolean, default=False)
     transfer_target: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
@@ -50,7 +50,7 @@ class CallTranscript(Base):
     turn_index: Mapped[int] = mapped_column(Integer, nullable=False)
     role: Mapped[str] = mapped_column(String(20), nullable=False)  # "user" or "assistant" or "system"
     text: Mapped[str] = mapped_column(Text, nullable=False)
-    timestamp: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
+    timestamp: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
     extra_metadata: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
 
     call: Mapped["Call"] = relationship("Call", back_populates="transcripts")
@@ -81,6 +81,6 @@ class CallAnalytics(Base):
     sentiment: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)  # positive, neutral, negative
     goal_achieved: Mapped[bool] = mapped_column(Boolean, default=False)
     key_takeaways: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
-    analyzed_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
+    analyzed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
     call: Mapped["Call"] = relationship("Call", back_populates="analytics")

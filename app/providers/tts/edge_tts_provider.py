@@ -40,23 +40,31 @@ class EdgeTTSProvider(BaseTTS):
                 continue
             buffer += text_chunk
             
-            # Synthesize on sentence boundaries or punctuation to achieve low time-to-first-audio chunk
-            if any(p in buffer for p in [".", "!", "?", "\n", ",", ";"]):
-                # Extract up to punctuation mark
+            words = buffer.strip().split()
+            has_punctuation = any(p in buffer for p in [".", "!", "?", "\n", ",", ";", ":", "-"])
+            has_min_words = len(words) >= settings.TTS_MIN_CHUNK_WORDS and (text_chunk.endswith(" ") or text_chunk.endswith("\n"))
+            
+            if has_punctuation or has_min_words:
                 speech_text = buffer.strip()
                 buffer = ""
                 if speech_text:
                     communicate = edge_tts.Communicate(speech_text, target_voice, rate=settings.DEFAULT_TTS_RATE)
+                    chunk_buffer = bytearray()
                     async for chunk in communicate.stream():
                         if chunk["type"] == "audio":
-                            yield chunk["data"]
+                            chunk_buffer.extend(chunk["data"])
+                    if chunk_buffer:
+                        yield bytes(chunk_buffer)
 
         # Flush any remaining text in buffer
         if buffer.strip():
             communicate = edge_tts.Communicate(buffer.strip(), target_voice, rate=settings.DEFAULT_TTS_RATE)
+            chunk_buffer = bytearray()
             async for chunk in communicate.stream():
                 if chunk["type"] == "audio":
-                    yield chunk["data"]
+                    chunk_buffer.extend(chunk["data"])
+            if chunk_buffer:
+                yield bytes(chunk_buffer)
 
 
 class MockTTSProvider(BaseTTS):

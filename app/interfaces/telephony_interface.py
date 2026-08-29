@@ -31,3 +31,9 @@ class BaseTelephonyAdapter(ABC):
         Hang up / terminate call session.
         """
         pass
+
+    async def send_control_event(self, event_dict: Dict[str, Any]) -> None:
+        """
+        Send JSON control / message event to telephony client or browser.
+        """
+        pass
