@@ -15,7 +15,7 @@ class BaseLLM(ABC):
     """Abstract Interface for Dialogue Engine / LLM Provider."""
 
     @abstractmethod
-    async def generate_response_stream(
+    def generate_response_stream(
         self,
         messages: List[Dict[str, Any]],
         tools: Optional[List[Dict[str, Any]]] = None,
