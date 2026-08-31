@@ -5,7 +5,8 @@ from app.interfaces.llm_interface import BaseLLM
 from app.interfaces.tts_interface import BaseTTS
 from app.interfaces.telephony_interface import BaseTelephonyAdapter
 
-from app.providers.vad.silero_vad import SileroVAD, EnergyVAD
+from app.providers.vad.silero_vad import SileroVAD
+from app.providers.vad.energy_vad import EnergyVAD
 from app.providers.stt.groq_stt import GroqSTT, MockSTT
 from app.providers.llm.groq_llm import GroqLLM, OllamaLLM, MockLLM
 from app.providers.llm.gemini_llm import GeminiLLM
