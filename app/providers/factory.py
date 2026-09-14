@@ -7,6 +7,7 @@ from app.interfaces.telephony_interface import BaseTelephonyAdapter
 
 from app.providers.vad.silero_vad import SileroVAD
 from app.providers.vad.energy_vad import EnergyVAD
+from app.providers.vad.target_speaker_vad import TargetSpeakerVAD
 from app.providers.stt.groq_stt import GroqSTT, MockSTT
 from app.providers.llm.groq_llm import GroqLLM, OllamaLLM, MockLLM
 from app.providers.llm.gemini_llm import GeminiLLM
@@ -20,7 +21,9 @@ class ProviderFactory:
     @staticmethod
     def get_vad(provider_name: str | None = None) -> BaseVAD:
         name = (provider_name or settings.VAD_PROVIDER).lower()
-        if name == "silero":
+        if name == "target_speaker":
+            return TargetSpeakerVAD(base_vad=SileroVAD())
+        elif name == "silero":
             return SileroVAD()
         elif name == "energy":
             return EnergyVAD()
