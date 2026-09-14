@@ -13,7 +13,7 @@ class Settings(BaseSettings):
     # Active Providers (Easily switchable via ENV or API)
     VAD_PROVIDER: str = "silero"          # "silero", "energy", "target_speaker"
     TARGET_SPEAKER_THRESHOLD: float = 0.60
-    TARGET_SPEAKER_ENROLL_SECONDS: float = 1.0
+    TARGET_SPEAKER_ENROLL_SECONDS: float = 4.0
     STT_PROVIDER: str = "groq"            # "groq", "faster_whisper", "mock"
     LLM_PROVIDER: str = "gemini"            # "groq", "gemini", "ollama", "mock"
     TTS_PROVIDER: str = "edge"            # "edge", "mock"
