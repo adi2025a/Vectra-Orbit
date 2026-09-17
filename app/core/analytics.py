@@ -3,13 +3,22 @@ from typing import Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.repository import CallRepository
 from app.db.models import CallAnalytics
+from app.db.session import AsyncSessionLocal
 from app.providers.factory import ProviderFactory
 
 class CallAnalyticsEngine:
     """Async background worker that analyzes completed call transcripts."""
 
-    @staticmethod
-    async def analyze_call(db_session: AsyncSession, call_id: str):
+    @classmethod
+    async def analyze_call(cls, call_id: str, db_session: Optional[AsyncSession] = None):
+        if db_session is not None:
+            await cls._run_analysis(db_session, call_id)
+        else:
+            async with AsyncSessionLocal() as session:
+                await cls._run_analysis(session, call_id)
+
+    @classmethod
+    async def _run_analysis(cls, db_session: AsyncSession, call_id: str):
         call = await CallRepository.get_call_details(db_session, call_id)
         if not call or not call.transcripts:
             return

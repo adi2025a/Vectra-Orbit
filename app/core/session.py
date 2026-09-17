@@ -13,6 +13,7 @@ from app.interfaces.telephony_interface import BaseTelephonyAdapter
 from app.core.metrics import TurnMetric, LatencyTracker, CallMetricsSummary
 from app.core.tool_registry import get_default_tools
 from app.db.repository import CallRepository
+from app.db.session import AsyncSessionLocal
 
 class CallSession:
     """
@@ -51,6 +52,10 @@ class CallSession:
         self.turn_counter: int = 0
         self.db_call_id: Optional[str] = None
 
+        # Non-blocking Database Write Queue & Background Worker
+        self._db_queue: asyncio.Queue = asyncio.Queue()
+        self._db_worker_task: Optional[asyncio.Task] = None
+
         # Audio Buffers & State
         self.audio_buffer = bytearray()
         self.is_user_speaking: bool = False
@@ -62,15 +67,52 @@ class CallSession:
         self.metrics_summary = CallMetricsSummary(session_id=self.session_id)
 
     async def initialize(self):
-        """Create DB record for the call session."""
-        if self.db:
-            db_call = await CallRepository.create_call(
-                session=self.db,
-                call_sid=self.session_id,
-                telephony_provider=type(self.telephony).__name__,
-                campaign_id=self.campaign_id
-            )
-            self.db_call_id = db_call.id
+        """Create DB record for the call session and start background DB worker."""
+        try:
+            if self.db is not None:
+                db_call = await CallRepository.create_call(
+                    session=self.db,
+                    call_sid=self.session_id,
+                    telephony_provider=type(self.telephony).__name__,
+                    campaign_id=self.campaign_id
+                )
+                self.db_call_id = db_call.id
+            else:
+                async with AsyncSessionLocal() as session:
+                    db_call = await CallRepository.create_call(
+                        session=session,
+                        call_sid=self.session_id,
+                        telephony_provider=type(self.telephony).__name__,
+                        campaign_id=self.campaign_id
+                    )
+                    self.db_call_id = db_call.id
+            self._db_worker_task = asyncio.create_task(self._run_db_worker())
+        except Exception as e:
+            print(f"[Session {self.session_id}] ⚠️ Failed to initialize DB call record: {e}")
+
+    def _enqueue_db_job(self, fn, *args, **kwargs):
+        """Fire-and-forget in-memory queue push (<0.01ms) - zero blocking on audio path."""
+        if self.db_call_id:
+            self._db_queue.put_nowait((fn, args, kwargs))
+
+    async def _run_db_worker(self):
+        """Sequential background consumer for DB writes off the voice hot path."""
+        while True:
+            job = await self._db_queue.get()
+            if job is None:
+                self._db_queue.task_done()
+                break
+            try:
+                fn, args, kwargs = job
+                if self.db is not None:
+                    await fn(self.db, *args, **kwargs)
+                else:
+                    async with AsyncSessionLocal() as session:
+                        await fn(session, *args, **kwargs)
+            except Exception as e:
+                print(f"[Session {self.session_id}] ⚠️ DB background worker error: {e}")
+            finally:
+                self._db_queue.task_done()
 
     async def process_incoming_audio(self, pcm_bytes: bytes):
         """Process incoming 20ms audio frame from client."""
@@ -141,12 +183,11 @@ class CallSession:
             print(f"[Session {self.session_id}] User (STT {turn.stt_latency_ms:.1f}ms): {user_transcript}")
             await self.telephony.send_control_event({"event": "transcript", "role": "user", "text": user_transcript})
 
-            # Append user message & DB turn
+            # Append user message & enqueue non-blocking DB turn
             self.messages.append({"role": "user", "content": user_transcript})
-            if self.db and self.db_call_id:
-                await CallRepository.add_transcript_turn(
-                    self.db, self.db_call_id, self.turn_counter, "user", user_transcript
-                )
+            self._enqueue_db_job(
+                CallRepository.add_transcript_turn, self.db_call_id, self.turn_counter, "user", user_transcript
+            )
 
             # 2. LLM Dialogue Engine Latency (TTFT & Total)
             tracker.start("llm_ttft")
@@ -177,10 +218,9 @@ class CallSession:
                     print(f"[Session {self.session_id}] AI (LLM {turn.llm_ttft_ms:.1f}ms): {llm_response_text}")
                     self.messages.append({"role": "assistant", "content": llm_response_text})
                     await self.telephony.send_control_event({"event": "transcript", "role": "assistant", "text": llm_response_text})
-                    if self.db and self.db_call_id:
-                        await CallRepository.add_transcript_turn(
-                            self.db, self.db_call_id, self.turn_counter, "assistant", llm_response_text
-                        )
+                    self._enqueue_db_job(
+                        CallRepository.add_transcript_turn, self.db_call_id, self.turn_counter, "assistant", llm_response_text
+                    )
 
             # 3. TTS Synthesis Stream Latency
             tracker.start("tts_first_chunk")
@@ -213,9 +253,8 @@ class CallSession:
 
             await self.telephony.send_control_event({"event": "metrics", "data": turn.model_dump()})
 
-            # Save metrics to DB
-            if self.db and self.db_call_id:
-                await CallRepository.record_turn_metric(self.db, self.db_call_id, turn)
+            # Enqueue metrics to DB (non-blocking)
+            self._enqueue_db_job(CallRepository.record_turn_metric, self.db_call_id, turn)
 
         except asyncio.CancelledError:
             print(f"[Session {self.session_id}] Pipeline execution cancelled due to barge-in.")
@@ -232,9 +271,9 @@ class CallSession:
             # Execute call forwarding via Telephony Adapter
             transferred = await self.telephony.transfer_call(self.session_id, target_num)
             
-            if self.db and self.db_call_id:
-                await CallRepository.mark_call_completed(
-                    self.db,
+            if self.db_call_id:
+                self._enqueue_db_job(
+                    CallRepository.mark_call_completed,
                     self.db_call_id,
                     status="transferred",
                     was_transferred=True,
@@ -243,9 +282,15 @@ class CallSession:
                 )
 
     async def close(self):
-        """End call session and persist metrics summary."""
+        """End call session, flush queued DB writes, and persist final status."""
         if self.active_response_task and not self.active_response_task.done():
             self.active_response_task.cancel()
         
-        if self.db and self.db_call_id:
+        if self.db_call_id and self._db_worker_task:
+            self._enqueue_db_job(CallRepository.mark_call_completed, self.db_call_id, status="completed")
+            # Signal worker to shut down after finishing all pending queued jobs
+            await self._db_queue.put(None)
+            await self._db_queue.join()
+            await self._db_worker_task
+        elif self.db and self.db_call_id:
             await CallRepository.mark_call_completed(self.db, self.db_call_id, status="completed")
